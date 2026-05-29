@@ -2,7 +2,7 @@
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
-[![Paper](https://img.shields.io/badge/arXiv-2026.xxxxx-b31b1b.svg)](https://arxiv.org/abs/2026.30094)
+[![Paper](https://img.shields.io/badge/arXiv-2026.30094-b31b1b.svg)](https://arxiv.org/abs/2026.30094)
 
 **Authors:** Boning Li, Baoxiang Wang, Longbo Huang  
 **Affiliation:** Tsinghua University  
