@@ -1,7 +1,2 @@
-"""PokerSkill Agent — HUNL prompt generation and GTO Wizard battle."""
-
-__version__ = "2.0.0"
-
-from ._core import generate_prompt
-
-__all__ = ["generate_prompt", "__version__"]
+from ._api import ALL_SKILL_LAYERS, SYSTEM_PROMPT, __version__, generate_prompt, resolve_layers
+__all__ = ["ALL_SKILL_LAYERS", "SYSTEM_PROMPT", "generate_prompt", "__version__"]

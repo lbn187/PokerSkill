@@ -1,6 +1,6 @@
 # PokerSkill: LLMs Can Play Expert-Level Poker without Training or Solvers
 
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Paper](https://img.shields.io/badge/arXiv-2605.30094-b31b1b.svg)](https://arxiv.org/abs/2605.30094)
 
@@ -51,90 +51,165 @@ PokerSkill reduces losses by 49–61% compared to default-prompt baselines and o
 ## Quick Start (Docker)
 
 ```bash
-# Build the image
+# Build the image (Ubuntu 24.04 + CPython 3.12, matching the compiled extensions)
 docker build -t pokerskill-agent .
+
+# Print the exact prompt for one decision; needs no API key
+docker run --rm pokerskill-agent prompt --state /app/pokerskill_agent/examples/flop_cbet.json
 
 # Play against GTO Wizard
 docker run --rm \
   -e GTO_WIZARD_API_KEY=$GTO_WIZARD_API_KEY \
-  -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
-  pokerskill-agent play --num-hands 100 --model claude-opus-4-6
+  -e OPENAI_API_KEY=$OPENAI_API_KEY \
+  pokerskill-agent gtowizard --num-hands 100 --model <model> --log-dir /work/logs
 ```
 
-## Local Installation (Linux x86_64 + Python 3.9)
+## Local Installation (Linux x86_64 + Python 3.12)
 
 ```bash
+python3.12 -m venv .venv && . .venv/bin/activate
 pip install .
 pokerskill-agent --help
 ```
 
-> The compiled extensions require Linux x86_64 with Python 3.9. For other platforms, use Docker.
+> Every module of `pokerskill_agent` is a compiled CPython extension built for
+> **CPython 3.12 on x86-64 Linux** (glibc 2.39, Ubuntu 24.04). Other interpreter
+> versions cannot import it; use the Docker image or match that interpreter. The
+> only Python file in the package is a two-line `__init__.py` that re-exports the
+> package API.
 
 ## Usage
+
+### Inspect a prompt (no API key)
+
+`prompt` prints the system and user prompt the agent would send for one decision.
+It is deterministic and needs no network or model access:
+
+```bash
+pokerskill-agent prompt --state pokerskill_agent/examples/flop_cbet.json
+pokerskill-agent prompt --state pokerskill_agent/examples/preflop_btn_open.json --layers p1,p2
+pokerskill-agent prompt --state pokerskill_agent/examples/river_bluffcatch.json --no-skills
+pokerskill-agent prompt --state pokerskill_agent/examples/flop_cbet.json --json
+```
+
+Three states are included (`pokerskill_agent/examples/`): a button open, a flop
+c-bet decision, and a river bluff-catch. `--layers` selects the active skill
+layers (`p1`–`p5` plus `vo` for the viable-option filter); `--no-skills` keeps
+only the P1 system rules, which is the default-prompting baseline.
 
 ### Play Against GTO Wizard
 
 ```bash
-# Claude (default)
-pokerskill-agent play --num-hands 5000 --model claude-opus-4-6
+export GTO_WIZARD_API_KEY=...
+export OPENAI_API_KEY=...          # any OpenAI-compatible endpoint
+export OPENAI_BASE_URL=...         # optional
 
-# Claude with extended thinking
-pokerskill-agent play --num-hands 5000 --model claude-opus-4-6 --thinking-budget 100000
-
-# OpenAI
-pokerskill-agent play --num-hands 1000 --model gpt-4o --backend openai
-
-# OpenAI reasoning model
-pokerskill-agent play --num-hands 1000 --model o3 --backend openai --thinking-budget 1
-
-# Custom API base URL
-pokerskill-agent play --model claude-opus-4-6 --base-url https://your-proxy.com
+pokerskill-agent gtowizard --num-hands 5000 --model <model> --concurrent 3 \
+    --log-dir logs/run1
 ```
 
-### Baseline Mode (No Skills)
+Each hand is created, played decision by decision, and closed through the
+Researcher API; the server returns the AIVAT-adjusted result for the hand. The
+run writes `results_<num-hands>h.csv` (one row per hand) and `benchmark.log` into
+the log directory. Add `--log-prompts` to store every prompt and model response.
 
-Disable the PokerSkill strategy layers to run a default-prompt baseline:
-
-```bash
-pokerskill-agent play --num-hands 1000 --model claude-opus-4-6 --no-skills
-```
-
-### Options
+The paper's main results used `--num-hands 5000 --concurrent 3` (10,000 for the
+ablation). All reported model endpoints were OpenAI-compatible, which is why a
+single driver covers every model in the paper.
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--num-hands, -n` | 100 | Number of hands to play |
-| `--model, -m` | claude-opus-4-6 | LLM model name |
-| `--backend, -b` | (auto) | claude / openai |
+| `--num-hands` | 100 | Number of hands to play |
+| `--model` | gpt-5.5 | Model name at the OpenAI-compatible endpoint |
+| `--base-url` | `OPENAI_BASE_URL` | API base URL override |
 | `--concurrent` | 3 | Concurrent hands |
-| `--thinking-budget` | 0 | Extended thinking tokens |
-| `--no-skills` | false | Disable PokerSkill (baseline mode) |
-| `--output, -o` | results_\<model\>.csv | CSV output path |
-| `--base-url` | (default) | LLM API base URL override |
-| `--temperature` | 0.3 | LLM temperature |
-| `--max-tokens` | 1024 | Max response tokens |
+| `--temperature` | 0.3 | Sampling temperature |
+| `--max-tokens` | 4096 | Max completion tokens |
+| `--reasoning-effort` | (none) | `low` / `medium` / `high` / `xhigh` for reasoning models |
+| `--log-prompts` | off | Store every prompt and response |
+| `--log-dir` | `logs/<model>` | Output directory |
+| `--no-skills` | off | Default-prompting baseline |
+| `--strict-api` | off | Fail the hand instead of falling back to a default action when the model is unavailable |
+
+### Play Against Slumbot
+
+```bash
+export SLUMBOT_USERNAME=...        # free account from slumbot.com
+export SLUMBOT_PASSWORD=...
+
+pokerskill-agent slumbot --num-hands 20000 --model <model> --delay 0.5 \
+    --max-tokens 1024 --log-dir logs/slumbot1
+```
+
+Slumbot has no AIVAT and no reference strategy, so this driver reports raw
+winnings. Hands are played one at a time; the running result is checkpointed to
+`checkpoint.json` every 100 hands, and `--resume` continues from it. Outputs per
+run: `checkpoint.json`, `slumbot_results.json` (per-hand winnings and stats),
+`report.txt`, and one `hand_<id>.log` per hand. Slumbot is a single session per
+account, so the paper ran 20 accounts as 20 processes, each with its own log
+directory.
+
+### Ablations
+
+The leave-one-out ablation of the skill layers is a flag on the GTO Wizard
+driver:
+
+```bash
+pokerskill-agent gtowizard --num-hands 10000 --model <model> --disable-p4 --log-dir logs/wo_p4
+```
+
+| Flag | Layer removed |
+|------|---------------|
+| `--disable-p1` | P1 system rules (falls back to a minimal system prompt) |
+| `--disable-p2` | P2 preflop range table |
+| `--disable-p3` | P3 general postflop principles |
+| `--disable-p4` | P4 context-specific strategy |
+| `--disable-p5` | P5 river blocker guidance |
+| `--disable-viable-options` | the viable-option filter (`vo`) |
 
 ## Environment Variables
 
 | Variable | Required For | Description |
 |----------|-------------|-------------|
-| `GTO_WIZARD_API_KEY` | Always | GTO Wizard Researcher API key |
-| `ANTHROPIC_API_KEY` | Claude backend | Anthropic API key |
-| `OPENAI_API_KEY` | OpenAI backend | OpenAI API key |
+| `GTO_WIZARD_API_KEY` | `gtowizard` | GTO Wizard Researcher API key (or `--gto-api-key`) |
+| `OPENAI_API_KEY` | `gtowizard`, `slumbot` | Key for the OpenAI-compatible model endpoint |
+| `OPENAI_BASE_URL` | optional | Base URL of the model endpoint (or `--base-url`) |
+| `SLUMBOT_USERNAME`, `SLUMBOT_PASSWORD` | `slumbot` | slumbot.com account (or `--username`/`--password`) |
 
-## Output
+No key, token, or account is stored in this package; nothing is written to disk
+except run outputs.
 
-CSV file with columns: `hand_id, position, llm_model, method, winnings_bb, aivat_bb, num_decisions, error`
+## Determinism
 
-Console output shows running totals and final summary:
-```
-==================================================
-Completed: 5000 | Failed: 3
-Total winnings: -430.5 BB
-Avg winnings: -0.09 BB/hand
-AIVAT: -309.0 BB total, -0.06 BB/hand
-==================================================
-```
+For a fixed game state and a fixed set of skill layers, the prompt is a pure
+function of its inputs and is byte-identical between calls. The model's answer is
+not deterministic, and the preflop range table samples from a mixed strategy
+using the `random` module, so two runs of the same command will not agree hand
+for hand. The results in the paper are averages over thousands of hands.
+
+## Package Layout
+
+| Path | Contents |
+|------|----------|
+| `pokerskill_agent/prompt_builder.*.so` | prompt assembly, layer gating |
+| `pokerskill_agent/skill_content.*.so` | skill library text and system prompts |
+| `pokerskill_agent/action_line_context.*.so` | scenario IDs, weighted pressure, budgets |
+| `pokerskill_agent/postflop_analyzer.*.so` | board/hand analysis, P3/P4/P5 retrieval |
+| `pokerskill_agent/preflop_range.*.so` | preflop range table and mixed-strategy sampling |
+| `pokerskill_agent/unwanted_outs.*.so` | turn/river card-removal analysis |
+| `pokerskill_agent/response_parser.*.so` | model-output validation and bounds repair |
+| `pokerskill_agent/_api.*.so`, `cli.*.so`, `schema.*.so` | package API, command line, input validation |
+| `pokerskill_agent/driver_gto.*.so`, `driver_slumbot.*.so` | the two evaluation drivers |
+| `pokerskill_agent/gpt_poker_agent.*.so`, `openai_client.*.so` | per-decision model loop and API client |
+| `pokerskill_agent/gto_wizard_client.*.so`, `gto_wizard_runner.*.so` | Researcher API client and hand loop |
+| `pokerskill_agent/slumbot_api.*.so`, `hunl_engine.*.so` | Slumbot HTTP API and hand-state bridge |
+| `pokerskill_agent/config.*.so`, `__init__.py`, `examples/` | run configuration, re-export stub, example states |
+
+Analysis, plotting, auditing, and experiment-launch scripts are not part of this
+release, and neither is the code that produced the paper's figures and tables.
+The two drivers above are the ones that produced every number in the paper. The
+full source, including the skill library as readable text, is released upon
+publication of the paper.
 
 ## Architecture
 
