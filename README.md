@@ -8,15 +8,15 @@
 **Affiliation:** Tsinghua University  
 **Email:** li-bn22@mails.tsinghua.edu.cn
 
-# Poker AI 
+# 招实习生
 
-Our Poker AI (not PokerSkill) can crush online Texas Hold'em by using a large model-based search algorithm that supports millisecond level equilibrium strategy solving in any multiplayer scenario. Our strategy accuracy and strength are close to GTOWizard (the strongest solver), and our AI can handle any scenario solvers can not handle (such as a group of people limp ahead, or >=4 people entering a flop). Our AI can also exploit weaker opponents and earn more profits than GTO solver. If you are interested in commercial cooperation with our poker AI, please contact me. 
+我认为PokerSkill方法可直接应用到多人扑克、奥马哈、麻将等游戏上，可以随便水论文。招本科实习生帮忙编写这些相关游戏的Agent和Skill。
 
-## Human Testing
+# 招人类AI测试者
 
-If you are good at playing poker and are interested in human testing against PokerSkill, please contact me for details. 
+我认为PokerSkill，加上一定程度的对手剥削，能够在无限注单挑德州扑克上达到甚至超过职业牌手的水平。我乐意提供免费的对战API，供较高水平的玩家进行测试。
 
-We are also seeking poker professional players willing to participate in multiplayer poker testing too.
+此外，我们的另一个扑克AI产品可以在2-9人的任意扑克场景下（任意规则、任意筹码量、任意人数、随便limp），给出实时的决策。我们的AI已经显著战胜了多位GPI排名前100的玩家。为了提升产品的可靠性，我正在寻找GPI全球排名在最近10年达到过世界前10000的玩家进行测试，可提供较为丰厚的测试报酬。
 
 ---
 
